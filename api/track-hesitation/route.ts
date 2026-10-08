@@ -1,31 +1,38 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { HesitationEventSchema } from "@/customer-intelligence/lib/validation";
 
-// In a full implementation, we'd batch these or write to a fast store (like Redis or log file)
-// For now, we write to a HesitationLog table (or log it).
+// Backend endpoint that ONLY accepts authentic, validated hesitation data.
 export async function POST(req: Request) {
   try {
-    const { type, data, url } = await req.json();
+    const raw = await req.json();
+    // Validate the incoming payload – reject any malformed or hallucinated data.
+    const parseResult = HesitationEventSchema.safeParse(raw);
+    if (!parseResult.success) {
+      console.warn("Invalid hesitation payload", parseResult.error.format());
+      return NextResponse.json({ success: false, error: "Invalid payload" }, { status: 400 });
+    }
+    const { type, data, url } = parseResult.data;
 
     console.log(`[HESITATION TRACKED] Type: ${type} | URL: ${url} | Data:`, data);
 
-    // Write to a persistent generic table if needed, e.g., Event table
+    // Persist the validated event (e.g., to a generic Event table).
     await prisma.event.create({
       data: {
-        userId: "anonymous", 
+        userId: "anonymous",
         type: "HESITATION_EVENT",
         metadata: {
           hesitationType: type,
           url,
-          ...data
-        }
-      }
+          ...data,
+        },
+      },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Hesitation tracking error:", error);
-    // Fail silently so we don't break the client
-    return NextResponse.json({ success: false });
+    // Return a safe error response – never expose internal details to the client.
+    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
   }
 }
