@@ -1,0 +1,8 @@
+{
+  "name": "Customer Intelligence & Hesitation Portal",
+  "description": "Ekora Wholesale customer intelligence dashboard tracking customer hesitation, wholesale tier confusion, shipping thresholds, and automated WhatsApp sales recovery.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
